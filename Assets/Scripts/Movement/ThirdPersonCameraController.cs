@@ -19,7 +19,8 @@ public class ThirdPersonCameraController : MonoBehaviour
         var eulerAngles = transform.rotation.eulerAngles;
         pitch = eulerAngles.x;
         yaw = eulerAngles.y;
-        Cursor.lockState = CursorLockMode.Locked;
+
+        Cursor.lockState = CursorLockMode.Locked; // Move this shi outta here ASAP, it shouldn't be here, but for now it works. I will fix this later
         Cursor.visible = false;
     }
 

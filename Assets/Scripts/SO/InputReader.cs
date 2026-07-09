@@ -27,6 +27,7 @@ public class InputReader : ScriptableObject, Controls.IPlayerActions, Controls.I
     public UnityEvent<Vector2> ScrollWheelEvent { get; } = new UnityEvent<Vector2>();
 
     public Vector2 MouseDelta { get; private set; }
+    public Vector2 MoveInput { get; private set; }
     private Controls _controls;
     private void OnEnable()
     {
@@ -62,6 +63,7 @@ public class InputReader : ScriptableObject, Controls.IPlayerActions, Controls.I
     public void OnMove(InputAction.CallbackContext context)
     {
         MoveEvent.Invoke(context.ReadValue<Vector2>());
+        MoveInput = context.ReadValue<Vector2>();
     }
 
     public void OnLook(InputAction.CallbackContext context)
