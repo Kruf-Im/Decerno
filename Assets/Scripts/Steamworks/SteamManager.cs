@@ -4,45 +4,75 @@ using Steamworks.Data;
 
 public class SteamManager : MonoBehaviour
 {
-    // Default test AppID (Spacewar). Replace with your actual AppID later.
     private const uint AppId = 480;
 
-    private static SteamManager instance;
+    public static bool IsInitialized => _isInitialized;
+
+    private static SteamManager _instance;
+    private static bool _isInitialized;
 
     private void Awake()
     {
-        // Ensure only one instance of SteamManager exists
-        if (instance != null)
+        if (_instance != null)
         {
             Destroy(gameObject);
             return;
         }
 
-        instance = this;
+        _instance = this;
         DontDestroyOnLoad(gameObject);
 
-        try
-        {
-            // Initialize Steamworks client
-            SteamClient.Init(AppId, true);
-            Debug.Log($"[SteamManager] Successfully initialized Steam! Logged in as: {SteamClient.Name} ({SteamClient.SteamId})");
-        }
-        catch (System.Exception e)
-        {
-            // Steam isn't running, or steam_api64.dll is missing
-            Debug.LogError($"[SteamManager] Could not initialize Steam: {e.Message}");
-        }
+        InitializeSteam();
     }
 
     private void Update()
     {
-        // Run callbacks every frame to process Steam events
-        SteamClient.RunCallbacks();
+        if (_isInitialized)
+            SteamClient.RunCallbacks();
     }
 
-    private void OnDisable()
+    private void OnApplicationQuit()
     {
-        // Cleanly shutdown when leaving play mode or quitting
-        SteamClient.Shutdown();
+        ShutdownSteam();
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance == this)
+        {
+            ShutdownSteam();
+        }
+    }
+
+    private void InitializeSteam()
+    {
+        if (_isInitialized) return;
+
+        try
+        {
+            SteamClient.Init(AppId, true);
+            _isInitialized = true;
+            Debug.Log($"[SteamManager] Initialized Steam! User: {SteamClient.Name} ({SteamClient.SteamId})");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SteamManager] Could not initialize Steam: {e.Message}");
+        }
+    }
+
+    private static void ShutdownSteam()
+    {
+        if (!_isInitialized) return;
+
+        try
+        {
+            SteamClient.Shutdown();
+            _isInitialized = false;
+            Debug.Log("[SteamManager] SteamClient Shutdown Successfully.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[SteamManager] Error shutting down Steam: {e.Message}");
+        }
     }
 }

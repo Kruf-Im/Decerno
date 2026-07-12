@@ -8,11 +8,11 @@ public class InputReader : ScriptableObject, Controls.IPlayerActions, Controls.I
     // Events for player actions
     public UnityEvent<Vector2> MoveEvent { get; } = new UnityEvent<Vector2>();
     public UnityEvent AttackEvent { get; } = new UnityEvent();
-    public UnityEvent InteractEvent { get; } = new UnityEvent();
-    public UnityEvent JumpEvent { get; } = new UnityEvent();
+    public UnityEvent<bool> InteractEvent { get; } = new UnityEvent<bool>();
+    public UnityEvent<bool> JumpEvent { get; } = new UnityEvent<bool>();
     public UnityEvent PreviousEvent { get; } = new UnityEvent();
     public UnityEvent NextEvent { get; } = new UnityEvent();
-    public UnityEvent SprintEvent { get; } = new UnityEvent();
+    public UnityEvent<bool> SprintEvent { get; } = new UnityEvent<bool>();
     public UnityEvent PauseEvent { get; } = new UnityEvent();
     public UnityEvent InventoryEvent { get; } = new UnityEvent();
 
@@ -78,12 +78,26 @@ public class InputReader : ScriptableObject, Controls.IPlayerActions, Controls.I
 
     public void OnInteract(InputAction.CallbackContext context)
     {
-        InteractEvent.Invoke();
+        if (context.performed)
+        {
+            InteractEvent.Invoke(true);
+        }
+        else if (context.canceled)
+        {
+            InteractEvent.Invoke(false);
+        }
     }
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        JumpEvent.Invoke();
+        if (context.performed)
+        {
+            JumpEvent.Invoke(true);
+        }
+        else if (context.canceled)
+        {
+            JumpEvent.Invoke(false);
+        }
     }
 
     public void OnPrevious(InputAction.CallbackContext context)
@@ -98,7 +112,14 @@ public class InputReader : ScriptableObject, Controls.IPlayerActions, Controls.I
 
     public void OnSprint(InputAction.CallbackContext context)
     {
-        SprintEvent.Invoke();
+        if (context.performed)
+        {
+            SprintEvent.Invoke(true);
+        }
+        else if (context.canceled)
+        {
+            SprintEvent.Invoke(false);
+        }
     }
 
     public void OnPause(InputAction.CallbackContext context)
