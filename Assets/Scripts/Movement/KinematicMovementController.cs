@@ -21,13 +21,18 @@ public class KinematicMovementController : MonoBehaviour, ICharacterController
     [SerializeField] private float Drag = 0.5f;
 
     [Header("Jumping & Gravity")]
-    [SerializeField] private InputBuffer jumpBuffer = new();
+    //[SerializeField] private InputBuffer jumpBuffer = new();
+    [SerializeField] private FloatInputBuffer jumpBuffer = new();
     [SerializeField] private float CoyoteTime = 0.2f;
-    [SerializeField] private float JumpHeight = 2.0f;
+    [SerializeField] private float MinJumpHeight = 2.0f;
+    [SerializeField] private float MaxJumpHeight = 4.0f;
+    [SerializeField] private float FullJumpHoldTime = 1f;
     [SerializeField] private Vector3 Gravity = new Vector3(0, -25f, 0);
 
     private float _coyoteTimeCounter;
+    private float _jumpHeldTime;
     private bool _isJumpHeld;
+
     private Transform _cameraTransform;
     private Vector3 _moveInputVector;
     private Vector3 _lookInputVector;
@@ -60,6 +65,10 @@ public class KinematicMovementController : MonoBehaviour, ICharacterController
     {
         if (inputReader == null || _cameraTransform == null)
             return;
+        if (_isJumpHeld)
+        {
+            _jumpHeldTime += Time.deltaTime;
+        }
 
         Vector2 rawInput = inputReader.MoveInput;
 
@@ -83,11 +92,15 @@ public class KinematicMovementController : MonoBehaviour, ICharacterController
         if (isPressed)
         {
             _isJumpHeld = true;
-            jumpBuffer.Set();
+            _jumpHeldTime = 0f;
+            //jumpBuffer.Set();
         }
         else
         {
             _isJumpHeld = false;
+            float holdDuration = Mathf.Clamp(_jumpHeldTime, 0.05f, FullJumpHoldTime);
+            jumpBuffer.Set(holdDuration);
+            _jumpHeldTime = 0f;
         }
     }
 
@@ -106,17 +119,20 @@ public class KinematicMovementController : MonoBehaviour, ICharacterController
         }
 
         bool canJump = (isGrounded || _coyoteTimeCounter > 0f);
-
         // 1. JUMP EXECUTION
-        if (canJump && jumpBuffer.IsBuffered)
+        if (canJump && jumpBuffer.TryConsume(out float holdDuration))
         {
-            float jumpVelocity = Mathf.Sqrt(2f * JumpHeight * -Gravity.y);
+            // Calculate jump height using the consumed hold duration
+            float holdRatio = Mathf.Clamp01(holdDuration / FullJumpHoldTime);
+            float jumpHeight = Mathf.Lerp(MinJumpHeight, MaxJumpHeight, holdRatio);
+            float jumpVelocity = Mathf.Sqrt(2f * jumpHeight * -Gravity.y);
+
+            // Reset current Y velocity
             Vector3 verticalVelocity = Vector3.Dot(currentVelocity, motor.CharacterUp) * motor.CharacterUp;
             currentVelocity -= verticalVelocity;
             currentVelocity += motor.CharacterUp * jumpVelocity;
 
             motor.ForceUnground();
-            jumpBuffer.Consume();
             _coyoteTimeCounter = 0f;
 
             return;
@@ -180,16 +196,35 @@ public class KinematicMovementController : MonoBehaviour, ICharacterController
     #region Custom Movement Methods
     public void AddForce(Vector3 force, ForceMode forceMode = ForceMode.Impulse)
     {
+        float mass = motor != null && motor.SimulatedCharacterMass > 0f ? motor.SimulatedCharacterMass : 1.0f;
+
         switch (forceMode)
         {
             case ForceMode.Force:
+                _externalForces += (force / mass) * Time.deltaTime;
+                break;
+
             case ForceMode.Acceleration:
                 _externalForces += force * Time.deltaTime;
                 break;
 
             case ForceMode.Impulse:
+                _externalForces += force / mass;
+                break;
+
             case ForceMode.VelocityChange:
-                _externalForces += force;
+                Vector3 addedVelocity = (forceMode == ForceMode.Impulse) ? (force / mass) : force;
+
+                Vector3 currentVerticalVel = Vector3.Dot(motor.BaseVelocity, motor.CharacterUp) * motor.CharacterUp;
+                if (Vector3.Dot(addedVelocity, motor.CharacterUp) > 0f && Vector3.Dot(currentVerticalVel, motor.CharacterUp) < 0f)
+                {
+                    motor.BaseVelocity -= currentVerticalVel;
+                }
+
+                motor.BaseVelocity += addedVelocity;
+
+                motor.ForceUnground();
+                _coyoteTimeCounter = 0f;
                 break;
         }
 

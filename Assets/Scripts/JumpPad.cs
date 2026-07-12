@@ -17,7 +17,7 @@ public class JumpPad : MonoBehaviour
             Vector3 impulse = (transform.up * launchForce) + (transform.forward * forwardForce);
 
             // Pass the single vector straight into AddForce
-            player.AddForce(impulse, ForceMode.Impulse);
+            player.AddForce(impulse, ForceMode.VelocityChange);
 
             Debug.Log($"[JumpPad]: Launched {other.name} with force {impulse}!");
         }
